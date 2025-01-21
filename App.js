@@ -1,40 +1,46 @@
 import { StyleSheet, Text, View, TextInput, FlatList, Button } from 'react-native';
 import React, {useState} from 'react'
-
-// https://newsapi.org/docs/get-started
-//  183daca270264bad86fc5b72972fb82a
-//  https://newsapi.org/v2/everything?q=[Location]&from=[DATE]0&sortBy=[filter]&apiKey=[API_KEY]
-
-// url https://newsapi.org/v2/everything -G \
-//   -d q=Apple \
-//   -d from=2025-01-21 \
-//   -d sortBy=popularity \
-//   -d apiKey=API_KEY
-//   -d country=us \
-//   -d sources=bbc-news \
+import { Image } from 'react-native-web';
 
 export default function App() {
   const [search, setSearch] = useState('')
   const [articles, setArticles] = useState([])
-  // used after user searches, but while api is loading
   const [loading, setLoading] = useState(false)
-
+  const [inspecting, setInspecting] = useState(false)
+  const [selectedTitle, setSelectedTitle] = useState('')
 
   async function handleSearch() {
+    setInspecting(false)
     if (search.trim() === '') return
     setLoading(true)
     try {
       const data = await fetch(`https://newsapi.org/v2/everything?q=${search}&apiKey=183daca270264bad86fc5b72972fb82a`).then(res => res.json())
-      setArticles(data.articles)
+      setArticles(data.articles.filter(data => data.title !== '[Removed]')) // handeling for removed items
     } catch (error) {
       alert('Error Fetching articles.')
     } finally {
       setLoading(false)
     }
   }
-  
+
+  function handleSeeMore(title) {
+    setInspecting(true)
+    setSelectedTitle(title)
+  }
+
+  function handleGoBack() {
+    setInspecting(false)
+    setSelectedTitle('')
+  }
   return (
     <View style={styles.container}>
+      <Image source={{uri: 'https://thumbs.dreamstime.com/b/newspaper-stack-vector-illustration-news-paper-pile-front-page-top-view-abstract-text-articles-headlines-world-news-70078112.jpg'}} 
+      style={{
+        width: 200,
+        height: 200,
+        borderRadius: 10,
+        marginBottom: 10,
+      }}/>
       <TextInput 
       style={styles.input}
       placeholder='Search News'
@@ -42,18 +48,43 @@ export default function App() {
       onChangeText={setSearch}
       />
       <Button title="Search" onPress={handleSearch} />
+      {inspecting 
+      ? <>
+      <Button title="Go back" onPress={handleGoBack} />
+      <FlatList 
+        data={articles.filter(data => data.title === selectedTitle)}
+        keyExtractor={(item, index) => index.toString ()}
+        renderItem={({ item }) => (
+            <View>
+              <Text style={styles.item} onClick={handleSeeMore}>Title: {item.title}</Text>
+              <Text>{item.content}</Text>
+              <Text>Date Published: {item.publishedAt}</Text>
+              <Text>URL: {item.url}</Text>
+              <Image source={{uri: `${item.urlToImage}`}} 
+              style={{
+                width: 400,
+                height: 400,
+                resizeMode: 'contain',
+                borderRadius: 10,
+              }}/>
+              <Text>url to image: {item.urlToImage}</Text>
+            </View>
+        )}
+      />
+      </>
+    : <>
       {loading ? <Text>Loading...</Text>: null}
-      {/* displays list of all titles related to your search */}
       <FlatList 
         data={articles}
         keyExtractor={(item, index) => index.toString ()}
         renderItem={({ item }) => (
             <View style={styles.item}>
-              <Text style={styles.item}>{item.title}</Text>
-              <Text >{item.description}</Text>
+              <Text style={styles.item} onClick={() => handleSeeMore(item.title)}>{item.title}</Text>
+              <Text>{item.description}</Text>
             </View>
         )}
       />
+    </> }
     </View>
   );
 }
@@ -64,6 +95,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
+    margin: 10,
   },
   input: {
     height: 40,
@@ -74,6 +106,8 @@ const styles = StyleSheet.create({
   },
   item: {
     marginBottom: 15,
+    fontSize: 'larger',
+    cursor: 'pointer'
   },
   title: {
     fontWeight: 'bold'
